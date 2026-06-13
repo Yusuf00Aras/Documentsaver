@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets — never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+
+# Uploaded / user-generated files (may contain personal documents)
+uploads/
+storage/
+src/files/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
