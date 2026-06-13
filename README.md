@@ -123,7 +123,3 @@ deploy/
 An example Nginx reverse-proxy configuration is provided in
 [deploy/nginx/Dokumentenretter.conf](deploy/nginx/Dokumentenretter.conf). Replace the placeholder
 domain with your own and run the app behind it (for production, set `NODE_ENV=production`).
-
-## License
-
-ISC
