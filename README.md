@@ -1,4 +1,4 @@
-# Dokumentenretter
+# Documentsaver
 
 A tool to simplify the handling of documents, mails and several other important files. Upload a picture or a PDF document and it is stored in a database, where an AI assistant can audit the information and give clear, simple answers so you can better understand the contents of your documents.
 
@@ -30,8 +30,8 @@ A tool to simplify the handling of documents, mails and several other important 
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/<your-account>/Dokumentenretter.git
-cd Dokumentenretter
+git clone https://github.com/<your-account>/Documentsaver.git
+cd Documentsaver
 
 # 2. Install dependencies
 npm install
@@ -121,5 +121,5 @@ deploy/
 ## Deployment
 
 An example Nginx reverse-proxy configuration is provided in
-[deploy/nginx/Dokumentenretter.conf](deploy/nginx/Dokumentenretter.conf). Replace the placeholder
+[deploy/nginx/Documentsaver.conf](deploy/nginx/Documentsaver.conf). Replace the placeholder
 domain with your own and run the app behind it (for production, set `NODE_ENV=production`).
