@@ -61,31 +61,41 @@ const chunkResults = await query(`
     LIMIT 5`, [user_id, vectorString]);
 
 
-    if (chunkResults.rows.length === 0) {
-      return { answer: "No documents found for this user.", sources: [] };
-    }
+    const hasContext = chunkResults.rows.length > 0;
 
-    const contextData = chunkResults.rows
-      .map(row => row.chunk_text)
-      .join("\n\n---\n\n");
+    const contextData = hasContext
+      ? chunkResults.rows
+          .map(row => row.chunk_text)
+          .join("\n\n---\n\n")
+      : "(No matching documents were found for this question.)";
 
 const finalPrompt = `
 You are the document assistant for Dokumentenretter, a personal document management app.
 The user has uploaded documents (invoices, contracts, medical records, tax forms, letters, etc.)
-that have been OCR-scanned and stored. You help them understand and find information in their documents.
-If the User asks for something about the content, answer it without hesitation. If it is about something not in the text but may be in relation to the topic also answer it.
+that have been OCR-scanned and stored. Your main job is to help them understand and find
+information in their documents, but you are also a friendly, helpful conversational assistant.
+
+How to respond:
+- If the message is a greeting, small talk, or a general question (e.g. "hey", "how are you",
+  "what can you do?"), reply naturally and briefly. Do NOT mention documents unless it's relevant.
+  Feel free to let the user know you can help them search and understand their uploaded documents.
+- If the message is about the content of the user's documents, answer using the provided context.
+- If the user asks something document-related but the context is empty or insufficient, say so
+  clearly and suggest what they could upload or search for instead. Never invent document content.
+- For general knowledge questions not related to the documents, answer helpfully from your own
+  knowledge, and make clear it is general information (not from their documents).
 
 Rules:
-- Answer based ONLY on the provided context. Never invent document content.
-- If the context doesn't contain enough information, say so clearly and suggest what the user could upload or search for instead.
-- When you reference information, mention which document it comes from (filename and category).
-- If the user asks in German, answer in German. Match the user's language.
+- Never invent or fabricate the content of the user's documents.
+- When you reference information from a document, mention which document it comes from
+  (filename and category).
+- Match the user's language: if they write in German, answer in German; otherwise answer in English.
 - For financial amounts, dates, or legal terms, quote them exactly as they appear in the context.
 
 Context from the user's documents:
 ${contextData}
 
-User question:
+User message:
 ${prompt}
 `;
 
@@ -94,7 +104,9 @@ ${prompt}
 
     return {
       answer,
-      sources: [...new Set(chunkResults.rows.map(r => r.document_id))]
+      sources: hasContext
+        ? [...new Set(chunkResults.rows.map(r => r.document_id))]
+        : []
     };
   } catch (error) {
     logGeminiError('dbprompt failed', error);
