@@ -197,6 +197,15 @@ export async function deleteFile(fileId) {
   return res && res.ok
 }
 
+export async function renameFile(fileId, name) {
+  const res = await authFetch(`/api/files/${fileId}/rename`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  })
+  return res && res.ok
+}
+
 export function openFileInNewTab(file) {
   if (file.url) {
     window.open(file.url, '_blank')

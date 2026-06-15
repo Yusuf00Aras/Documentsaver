@@ -69,7 +69,17 @@
       <div v-for="file in filteredFiles" :key="file.id" class="file-card" role="gridcell">
         <div class="file-icon" aria-hidden="true">📄</div>
         <div class="file-info">
-          <span class="file-name" :title="file.name">{{ file.name }}</span>
+          <input
+            v-if="renamingId === file.id"
+            class="rename-input"
+            v-model="renameValue"
+            @keyup.enter="commitRename(file.id)"
+            @keyup.escape="cancelRename"
+            @blur="commitRename(file.id)"
+            @click.stop
+            autofocus
+          />
+          <span v-else class="file-name" :title="file.name">{{ file.name }}</span>
           <span class="file-date">{{ formatDate(file.created_at) }}</span>
           <span v-if="file.category" class="file-category-label">🗃️ {{ file.category }}</span>
         </div>
@@ -97,6 +107,7 @@
             >⋯</Buttons>
             <div v-if="openDropdown === file.id" class="dropdown-menu" @click.stop role="listbox">
               <div class="dropdown-item" role="option" @click="$emit('open-file', file); openDropdown = null">👁️ View PDF</div>
+              <div class="dropdown-item" role="option" @click="startRename(file)">✏️ Rename</div>
               <div class="dropdown-item" role="option" @click="openInfo(file); openDropdown = null">📋 Properties</div>
               <div class="dropdown-item" role="option" @click="$emit('delete-file', file.id); openDropdown = null">🗑️ Delete</div>
             </div>
@@ -125,7 +136,17 @@
           <tr v-for="file in filteredFiles" :key="file.id" class="file-row" role="row">
             <td class="col-name">
               <span class="row-icon" aria-hidden="true">📄</span>
-              <span class="row-name" :title="file.name">{{ file.name }}</span>
+              <input
+                v-if="renamingId === file.id"
+                class="rename-input"
+                v-model="renameValue"
+                @keyup.enter="commitRename(file.id)"
+                @keyup.escape="cancelRename"
+                @blur="commitRename(file.id)"
+                @click.stop
+                autofocus
+              />
+              <span v-else class="row-name" :title="file.name">{{ file.name }}</span>
             </td>
             <td class="col-category">
               <span class="row-category">{{ file.category || '—' }}</span>
@@ -156,6 +177,7 @@
                   >⋯</Buttons>
                   <div v-if="openDropdown === file.id" class="dropdown-menu" @click.stop role="listbox">
                     <div class="dropdown-item" role="option" @click="$emit('open-file', file); openDropdown = null">👁️ View PDF</div>
+                    <div class="dropdown-item" role="option" @click="startRename(file)">✏️ Rename</div>
                     <div class="dropdown-item" role="option" @click="openInfo(file); openDropdown = null">📋 Properties</div>
                     <div class="dropdown-item" role="option" @click="$emit('delete-file', file.id); openDropdown = null">🗑️ Delete</div>
                   </div>
@@ -220,12 +242,14 @@ const props = defineProps({
   isUploading: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['upload-file', 'open-file', 'delete-file', 'update-category'])
+const emit = defineEmits(['upload-file', 'open-file', 'delete-file', 'update-category', 'rename-file'])
 
 const isDragging = ref(false)
 const fileInputRef = ref(null)
 const infoFile = ref(null)
 const openDropdown = ref(null)
+const renamingId = ref(null)
+const renameValue = ref('')
 
 // For Sort
 const sortMode = ref('date-desc')
@@ -349,6 +373,23 @@ function formatSize(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+
+function startRename(file) {
+  renamingId.value = file.id
+  renameValue.value = file.name
+  openDropdown.value = null
+}
+
+function commitRename(fileId) {
+  if (renameValue.value.trim() && renameValue.value.trim() !== '') {
+    emit('rename-file', fileId, renameValue.value.trim())
+  }
+  renamingId.value = null
+}
+
+function cancelRename() {
+  renamingId.value = null
+}
 
 onMounted(() => document.addEventListener('click', onClickOutside))
 onUnmounted(() => document.removeEventListener('click', onClickOutside))
@@ -491,6 +532,20 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 .file-category-label { font-size: 0.72rem; color: var(--accent); font-weight: 600; }
 
 .file-actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+
+.rename-input {
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-surface-2);
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  padding: 2px 7px;
+  outline: none;
+  width: 100%;
+  box-shadow: 0 0 0 3px var(--accent-medium);
+}
 
 .file-category select {
   font-size: 0.85rem;

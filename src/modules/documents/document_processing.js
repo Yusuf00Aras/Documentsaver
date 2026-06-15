@@ -185,3 +185,10 @@ export async function updateDocumentCategory(documentId, category) {
     [category, documentId]
   );
 }
+
+export async function renameDocument(documentId, userId, name) {
+  await query(
+    `UPDATE documents SET title = $1 WHERE id = $2 AND user_id = $3`,
+    [name, documentId, userId]
+  );
+}

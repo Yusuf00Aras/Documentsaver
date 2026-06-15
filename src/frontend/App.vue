@@ -48,6 +48,7 @@
         @open-file="openFile"
         @delete-file="handleDeleteFile"
         @update-category="updateCategory"
+        @rename-file="handleRenameFile"
       />
 
       <FolderView
@@ -59,6 +60,7 @@
         @open-file="openFile"
         @delete-file="handleDeleteFile"
         @update-category="updateCategory"
+        @rename-file="handleRenameFile"
       />
     </div>
   </SmallWindows>
@@ -88,7 +90,8 @@ import {
   deleteFile as apiDeleteFile,
   openFileInNewTab,
   fetchCategories as apiFetchCategories,
-  updateFileCategory as apiUpdateFileCategory
+  updateFileCategory as apiUpdateFileCategory,
+  renameFile as apiRenameFile
 } from './utils/apicalls.js'
 
 // ==========================================
@@ -291,6 +294,18 @@ async function handleFileUpload(file) {
 
 function openFile(file) {
   openFileInNewTab(file)
+}
+
+async function handleRenameFile(fileId, newName) {
+  try {
+    const ok = await apiRenameFile(fileId, newName)
+    if (ok) {
+      const file = userFiles.value.find(f => f.id === fileId)
+      if (file) file.name = newName
+    }
+  } catch (err) {
+    console.error('Rename error:', err)
+  }
 }
 
 async function handleDeleteFile(fileId) {
