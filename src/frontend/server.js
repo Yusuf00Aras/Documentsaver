@@ -1,4 +1,5 @@
 import 'dotenv/config';
+
 import express from 'express'
 import cors from 'cors'
 import jwt from 'jsonwebtoken';
@@ -6,7 +7,7 @@ import cookieParser from 'cookie-parser';
 import fs from 'fs'
 import path from 'path'
 import { guestlogin } from '../modules/auth/guestlogin.js';
-import { login, authenticateToken } from './../modules/auth/user.js'
+import { login, register, authenticateToken } from './../modules/auth/user.js'
 import { dbprompt, titleCreation } from '../modules/chat/ChatEnvironment.js'
 import { createConversation, addMessage, listConversations, listMessages, deleteConversation } from '../modules/chat/conversations.js'
 import { upload } from './../shared/utils/upload.js'
@@ -99,6 +100,53 @@ app.post('/api/guestlogin', async (req,res)=>{
       return res.status(500).json({ error: 'Internal server error' });
     }
 })
+
+// ==========================================
+// Register
+// ==========================================
+app.post('/api/register', async (req, res) => {
+  try {
+    const { email, password, full_name } = req.body;
+    if (!email || !password || !full_name) {
+      return res.status(400).json({ error: 'Name, email and password are required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const user = await register(email, password, full_name);
+    if (!user) {
+      return res.status(409).json({ error: 'An account with this email already exists' });
+    }
+
+    const refreshToken = jwt.sign(
+      { user_id: user.id },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: '7d' }
+    );
+    const accessToken = jwt.sign(
+      { user_id: user.id },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    return res.status(201).json({
+      message: 'Registration successful',
+      accessToken,
+      user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role }
+    });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // ==========================================
 // Login

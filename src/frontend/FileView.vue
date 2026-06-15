@@ -13,7 +13,7 @@
 
     <div class="file-header">
       <h2>My Documents</h2>
-      <input 
+      <input
           v-model="searchQuery"
           type="text"
           class="search-input"
@@ -31,31 +31,41 @@
           <div class="dropdown-item" role="option" @click="setSort('date-desc')">📅 Oldest first </div>
         </div>
       </div>
-      <Buttons 
-        variant="primary" 
-        @click="triggerFileInput" 
+      <div class="sort-wrapper">
+        <Buttons variant="upload" @click="toggleView($event)" :title="`View: ${viewLabel}`">
+          {{ viewLabel }}
+        </Buttons>
+        <div v-if="viewOpen" class="dropdown-menu" @click.stop role="listbox" aria-label="View options">
+          <div class="dropdown-item" role="option" @click="setView('grid')">⊞ Cards</div>
+          <div class="dropdown-item" role="option" @click="setView('detail')">☰ Details</div>
+        </div>
+      </div>
+      <Buttons
+        variant="primary"
+        @click="triggerFileInput"
         :disabled="isUploading"
         :loading="isUploading"
         :title="isUploading ? 'File is uploading...' : 'Select a new PDF file'"
       >
         {{ isUploading ? 'Uploading...' : '📁 Upload new PDF' }}
       </Buttons>
-      <input 
-        type="file" 
-        ref="fileInputRef" 
-        accept="application/pdf" 
+      <input
+        type="file"
+        ref="fileInputRef"
+        accept="application/pdf"
         aria-label="Select PDF file"
-        class="hidden-input" 
+        class="hidden-input"
         @change="onFileSelected"
       />
     </div>
 
-    <div class="file-grid" role="grid" :aria-label="`${filteredFiles.length} Document${filteredFiles.length !== 1 ? 's' : ''}`">
+    <!-- ── Card / Grid view ── -->
+    <div v-if="viewMode === 'grid'" class="file-grid" role="grid" :aria-label="`${filteredFiles.length} Document${filteredFiles.length !== 1 ? 's' : ''}`">
       <div v-if="filteredFiles.length === 0" class="empty-state">
         <p>No documents uploaded yet.</p>
         <small>Drag a PDF here or click upload.</small>
       </div>
-      
+
       <div v-for="file in filteredFiles" :key="file.id" class="file-card" role="gridcell">
         <div class="file-icon" aria-hidden="true">📄</div>
         <div class="file-info">
@@ -77,11 +87,11 @@
               </option>
             </select>
           </div>
-          
+
           <div class="dropdown-wrapper">
-            <Buttons 
-              variant="icon-visible" 
-              title="Options" 
+            <Buttons
+              variant="icon-visible"
+              title="Options"
               :aria-label="`Options for ${file.name}`"
               @click="toggleDropdown(file.id, $event)"
             >⋯</Buttons>
@@ -93,6 +103,68 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ── Detail / Table view ── -->
+    <div v-else class="file-table-wrapper">
+      <div v-if="filteredFiles.length === 0" class="empty-state">
+        <p>No documents uploaded yet.</p>
+        <small>Drag a PDF here or click upload.</small>
+      </div>
+      <table v-else class="file-table" role="grid" :aria-label="`${filteredFiles.length} Document${filteredFiles.length !== 1 ? 's' : ''}`">
+        <thead>
+          <tr>
+            <th class="col-name">Name</th>
+            <th class="col-category">Category</th>
+            <th class="col-size">Size</th>
+            <th class="col-date">Date</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="file in filteredFiles" :key="file.id" class="file-row" role="row">
+            <td class="col-name">
+              <span class="row-icon" aria-hidden="true">📄</span>
+              <span class="row-name" :title="file.name">{{ file.name }}</span>
+            </td>
+            <td class="col-category">
+              <span class="row-category">{{ file.category || '—' }}</span>
+            </td>
+            <td class="col-size">{{ formatSize(file.size) }}</td>
+            <td class="col-date">{{ formatDate(file.created_at) }}</td>
+            <td class="col-actions">
+              <div class="row-actions">
+                <div class="file-category">
+                  <select
+                    :aria-label="`Category for ${file.name}`"
+                    value=""
+                    @change="onCategoryChange(file.id, $event)"
+                    :title="file.category || 'Choose category'"
+                  >
+                    <option value="">🗃️</option>
+                    <option v-for="cat in categories" :key="cat.id" :value="cat.name">
+                      {{ cat.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="dropdown-wrapper">
+                  <Buttons
+                    variant="icon-visible"
+                    title="Options"
+                    :aria-label="`Options for ${file.name}`"
+                    @click="toggleDropdown(file.id, $event)"
+                  >⋯</Buttons>
+                  <div v-if="openDropdown === file.id" class="dropdown-menu" @click.stop role="listbox">
+                    <div class="dropdown-item" role="option" @click="$emit('open-file', file); openDropdown = null">👁️ View PDF</div>
+                    <div class="dropdown-item" role="option" @click="openInfo(file); openDropdown = null">📋 Properties</div>
+                    <div class="dropdown-item" role="option" @click="$emit('delete-file', file.id); openDropdown = null">🗑️ Delete</div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div v-if="infoFile" class="modal-overlay" @click="infoFile = null" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
@@ -172,11 +244,30 @@ const sortLabel = computed(() => {
 function toggleSort(event) {
   event.stopPropagation()
   sortOpen.value = !sortOpen.value
+  viewOpen.value = false
 }
 
 function setSort(mode) {
   sortMode.value = mode
   sortOpen.value = false
+}
+
+// For View mode
+const viewMode = ref(localStorage.getItem('fileViewMode') || 'grid')
+const viewOpen = ref(false)
+
+const viewLabel = computed(() => viewMode.value === 'grid' ? '⊞ Cards' : '☰ Details')
+
+function toggleView(event) {
+  event.stopPropagation()
+  viewOpen.value = !viewOpen.value
+  sortOpen.value = false
+}
+
+function setView(mode) {
+  viewMode.value = mode
+  viewOpen.value = false
+  localStorage.setItem('fileViewMode', mode)
 }
 
 
@@ -212,6 +303,7 @@ function toggleDropdown(fileId, event) {
 function onClickOutside() {
   openDropdown.value = null
   sortOpen.value = false
+  viewOpen.value = false
 }
 
 
@@ -449,6 +541,86 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 
 .sort-wrapper { position: relative; }
 
+/* ── Detail / Table view ── */
+.file-table-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.file-table thead th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1.5px solid var(--border);
+  white-space: nowrap;
+  background: var(--bg-surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.file-row {
+  transition: background 0.14s;
+  border-bottom: 1px solid var(--border);
+}
+
+.file-row:last-child { border-bottom: none; }
+
+.file-row:hover { background: var(--accent-light); }
+
+.file-table td {
+  padding: 10px 12px;
+  vertical-align: middle;
+  color: var(--text-primary);
+}
+
+.col-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+}
+
+/* thead th.col-name needs display:table-cell override */
+.file-table thead th.col-name { display: table-cell; }
+
+.row-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+.row-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+  display: block;
+  font-weight: 600;
+}
+
+.col-category { min-width: 110px; }
+.row-category { color: var(--accent); font-size: 0.82rem; font-weight: 600; }
+
+.col-size { min-width: 80px; color: var(--text-muted); white-space: nowrap; }
+.col-date { min-width: 100px; color: var(--text-muted); white-space: nowrap; }
+
+.col-actions { width: 80px; }
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
 @media (max-width: 900px) { .file-view { padding: 18px; border-radius: 14px; } }
 
 @media (max-width: 640px) {
@@ -460,5 +632,6 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
   .sort-wrapper :deep(.app-btn) { width: 100%; }
   .file-header > :deep(.app-btn.primary) { flex: 1 1 100%; width: 100%; order: 4; }
   .file-grid { grid-template-columns: 1fr; }
+  .col-size, .col-category { display: none; }
 }
 </style>

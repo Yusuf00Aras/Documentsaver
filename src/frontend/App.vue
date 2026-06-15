@@ -1,7 +1,12 @@
 <template>
-  <!-- Show login if not authenticated -->
+  <!-- Show register/login if not authenticated -->
+  <Register
+    v-if="!isLoggedIn && showRegister"
+    @register-success="onLoginSuccess"
+    @show-login="showRegister = false"
+  />
   <Login
-    v-if="!isLoggedIn"
+    v-else-if="!isLoggedIn"
     @login-success="onLoginSuccess"
     @show-register="showRegister = true"
   />
@@ -63,6 +68,7 @@
 import { ref, onMounted } from 'vue'
 
 import Login from './Login.vue'
+import Register from './Register.vue'
 import SmallWindows from './utils/smallwindows.vue'
 import ChatWindows from './utils/chatwindows.vue'
 import FileView from './FileView.vue'
@@ -97,6 +103,7 @@ function onLoginSuccess(data) {
   setAccessToken(data.accessToken)
   currentUser.value = data.user
   isLoggedIn.value = true
+  showRegister.value = false
 
   loadInitialData()
 }

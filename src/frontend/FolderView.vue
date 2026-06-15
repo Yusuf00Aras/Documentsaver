@@ -30,6 +30,15 @@
           <div class="dropdown-item" role="option" @click="setSort('date-desc')">📅 Oldest first </div>
         </div>
       </div>
+      <div class="sort-wrapper">
+        <Buttons variant="upload" @click="toggleView($event)" :title="`View: ${viewLabel}`">
+          {{ viewLabel }}
+        </Buttons>
+        <div v-if="viewOpen" class="dropdown-menu" @click.stop role="listbox" aria-label="View options">
+          <div class="dropdown-item" role="option" @click="setView('grid')">⊞ Cards</div>
+          <div class="dropdown-item" role="option" @click="setView('detail')">☰ Details</div>
+        </div>
+      </div>
 
       <Buttons 
         variant="primary" 
@@ -72,8 +81,9 @@
           <span class="folder-count">{{ folder.files.length }} File{{ folder.files.length !== 1 ? 's' : '' }}</span>
           <span class="folder-chevron" aria-hidden="true">{{ openFolders.includes(folder.category) ? '▲' : '▼' }}</span>
         </div>
-        <div 
-          v-if="openFolders.includes(folder.category)" 
+        <!-- Card view -->
+        <div
+          v-if="openFolders.includes(folder.category) && viewMode === 'grid'"
           :id="`folder-${folder.category}`"
           class="folder-files"
           role="list"
@@ -98,18 +108,16 @@
                   </option>
                 </select>
               </div>
-              
-              <Buttons 
-                variant="icon-visible" 
-                title="Delete document" 
+              <Buttons
+                variant="icon-visible"
+                title="Delete document"
                 :aria-label="`Delete file ${file.name}`"
                 @click="$emit('delete-file', file.id)"
               >🗑️</Buttons>
-              
               <div class="dropdown-wrapper">
-                <Buttons 
-                  variant="icon-visible" 
-                  title="Options" 
+                <Buttons
+                  variant="icon-visible"
+                  title="Options"
                   :aria-label="`Options for ${file.name}`"
                   @click="toggleDropdown(file.id, $event)"
                 >⋯</Buttons>
@@ -120,6 +128,69 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Detail view -->
+        <div
+          v-else-if="openFolders.includes(folder.category) && viewMode === 'detail'"
+          :id="`folder-${folder.category}`"
+          class="folder-files"
+        >
+          <table class="file-table">
+            <thead>
+              <tr>
+                <th class="col-name">Name</th>
+                <th class="col-size">Size</th>
+                <th class="col-date">Date</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="file in folder.files" :key="file.id" class="file-row">
+                <td class="col-name">
+                  <span class="row-icon" aria-hidden="true">📄</span>
+                  <span class="row-name" :title="file.name">{{ file.name }}</span>
+                </td>
+                <td class="col-size">{{ formatSize(file.size) }}</td>
+                <td class="col-date">{{ formatDate(file.created_at) }}</td>
+                <td class="col-actions">
+                  <div class="row-actions">
+                    <div class="file-category">
+                      <select
+                        :aria-label="`Category for ${file.name}`"
+                        value=""
+                        @change="onCategoryChange(file.id, $event)"
+                        :title="file.category || 'Choose category'"
+                      >
+                        <option value="">🗃️</option>
+                        <option v-for="cat in categories" :key="cat.id" :value="cat.name">
+                          {{ cat.name }}
+                        </option>
+                      </select>
+                    </div>
+                    <Buttons
+                      variant="icon-visible"
+                      title="Delete document"
+                      :aria-label="`Delete file ${file.name}`"
+                      @click="$emit('delete-file', file.id)"
+                    >🗑️</Buttons>
+                    <div class="dropdown-wrapper">
+                      <Buttons
+                        variant="icon-visible"
+                        title="Options"
+                        :aria-label="`Options for ${file.name}`"
+                        @click="toggleDropdown(file.id, $event)"
+                      >⋯</Buttons>
+                      <div v-if="openDropdown === file.id" class="dropdown-menu" @click.stop role="listbox">
+                        <div class="dropdown-item" role="option" @click="$emit('open-file', file); openDropdown = null">👁️ View PDF</div>
+                        <div class="dropdown-item" role="option" @click="openInfo(file); openDropdown = null">📋 Properties</div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -199,11 +270,30 @@ const sortLabel = computed(() => {
 function toggleSort(event) {
   event.stopPropagation()
   sortOpen.value = !sortOpen.value
+  viewOpen.value = false
 }
 
 function setSort(mode) {
   sortMode.value = mode
   sortOpen.value = false
+}
+
+// For View mode
+const viewMode = ref(localStorage.getItem('folderViewMode') || 'grid')
+const viewOpen = ref(false)
+
+const viewLabel = computed(() => viewMode.value === 'grid' ? '⊞ Cards' : '☰ Details')
+
+function toggleView(event) {
+  event.stopPropagation()
+  viewOpen.value = !viewOpen.value
+  sortOpen.value = false
+}
+
+function setView(mode) {
+  viewMode.value = mode
+  viewOpen.value = false
+  localStorage.setItem('folderViewMode', mode)
 }
 
 function toggleDropdown(fileId, event) {
@@ -215,6 +305,7 @@ function toggleDropdown(fileId, event) {
 function onClickOutside() {
   openDropdown.value = null
   sortOpen.value = false
+  viewOpen.value = false
 }
 
 
@@ -518,6 +609,70 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 
 .dropdown-item:hover { background: var(--accent-light); color: var(--accent); }
 
+/* ── Detail / Table view inside folders ── */
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.file-table thead th {
+  text-align: left;
+  padding: 7px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface-2);
+}
+
+.file-row {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.13s;
+}
+
+.file-row:last-child { border-bottom: none; }
+.file-row:hover { background: var(--accent-light); }
+
+.file-table td {
+  padding: 9px 12px;
+  vertical-align: middle;
+  color: var(--text-primary);
+}
+
+.col-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+}
+
+.file-table thead th.col-name { display: table-cell; }
+
+.row-icon { font-size: 1rem; flex-shrink: 0; }
+
+.row-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+  display: block;
+  font-weight: 600;
+}
+
+.col-size { min-width: 80px; color: var(--text-muted); white-space: nowrap; }
+.col-date { min-width: 100px; color: var(--text-muted); white-space: nowrap; }
+.col-actions { width: 90px; }
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
 @media (max-width: 900px) { .folder-view { padding: 18px; border-radius: 14px; } }
 
 @media (max-width: 640px) {
@@ -529,5 +684,6 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
   .sort-wrapper :deep(.app-btn) { width: 100%; }
   .file-header > :deep(.app-btn.primary) { flex: 1 1 100%; width: 100%; order: 4; }
   .folder-header { padding: 11px 12px; }
+  .col-size { display: none; }
 }
 </style>

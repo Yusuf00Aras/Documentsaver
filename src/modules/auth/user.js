@@ -44,15 +44,17 @@ export const authenticateToken = (req, res, next) => {
   });
 };
 
-export function listUsers() {
-  return users;
-}
+export async function register(email, password, fullName) {
+  const { rows: existing } = await query('SELECT id FROM users WHERE email = $1', [email]);
+  if (existing.length > 0) return null;
 
-export function getUserById(id) {
-  return users.find(u => u.id === id) ?? null;
-}
-
-export function getUserByName(name) {
-  return users.find(u => u.name.toLowerCase() === name.toLowerCase()) ?? null;
+  const passwordHash = await bcrypt.hash(password, 10);
+  const { rows } = await query(
+    `INSERT INTO users (email, password_hash, full_name, role)
+     VALUES ($1, $2, $3, 'user')
+     RETURNING id, email, full_name, role`,
+    [email, passwordHash, fullName]
+  );
+  return rows[0];
 }
 

@@ -7,11 +7,23 @@
         <span class="login-kicker">Personal document assistant</span>
         <span class="login-icon">📄</span>
         <h1>Documentsaver</h1>
-        <p class="login-subtitle">Sign in to manage your documents, chats and analyses in a clean workspace.</p>
+        <p class="login-subtitle">Create an account to manage your documents, chats and analyses.</p>
       </div>
 
       <div v-if="errorMsg" class="error-banner">
         {{ errorMsg }}
+      </div>
+
+      <div class="form-group">
+        <label for="fullName">Full name</label>
+        <input
+          id="fullName"
+          v-model="fullName"
+          type="text"
+          placeholder="John Doe"
+          :disabled="isLoading"
+          @keyup.enter="canSubmit && handleRegister()"
+        />
       </div>
 
       <div class="form-group">
@@ -26,7 +38,7 @@
           placeholder="name@example.com"
           :disabled="isLoading"
           :aria-invalid="!emailValid && email ? 'true' : 'false'"
-          @keyup.enter="canSubmit && handleLogin"
+          @keyup.enter="canSubmit && handleRegister()"
         />
       </div>
 
@@ -39,10 +51,26 @@
           id="password"
           v-model="password"
           type="password"
-          placeholder="Enter password"
+          placeholder="Create a password"
           :disabled="isLoading"
           :aria-invalid="!passwordValid && password ? 'true' : 'false'"
-          @keyup.enter="canSubmit && handleLogin"
+          @keyup.enter="canSubmit && handleRegister()"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">
+          Confirm password
+          <span v-if="!confirmValid && confirmPassword" class="error-text">✗ Passwords don't match</span>
+        </label>
+        <input
+          id="confirmPassword"
+          v-model="confirmPassword"
+          type="password"
+          placeholder="Repeat your password"
+          :disabled="isLoading"
+          :aria-invalid="!confirmValid && confirmPassword ? 'true' : 'false'"
+          @keyup.enter="canSubmit && handleRegister()"
         />
       </div>
 
@@ -51,26 +79,14 @@
         class="action-btn"
         :disabled="!canSubmit"
         :loading="isLoading"
-        :title="!emailValid ? 'Valid email required' : !passwordValid ? 'Password min. 6 characters' : ''"
-        @click="handleLogin"
+        @click="handleRegister"
       >
-        {{ isLoading ? 'Signing in…' : 'Sign in' }}
+        {{ isLoading ? 'Creating account…' : 'Create account' }}
       </Buttons>
-      <Buttons
-        variant="guest"
-        class="action-btn"
-        @click="handleGuestLogin"
-      >
-        {{ isLoading ? 'Guest access…' : 'Try as guest' }}
-      </Buttons>
-
-      <div class="login-note">
-        Quick start for demos, tests and short PDF questions without a fixed account.
-      </div>
 
       <p class="register-link">
-        No account yet?
-        <span class="link" @click="$emit('show-register')">Sign up</span>
+        Already have an account?
+        <span class="link" @click="$emit('show-login')">Sign in</span>
       </p>
     </div>
   </div>
@@ -79,61 +95,39 @@
 <script setup>
 import { ref, computed } from 'vue'
 import Buttons from './utils/buttons.vue'
-import { loginUser, loginGuest } from './utils/apicalls.js'
+import { registerUser } from './utils/apicalls.js'
 
-const emit = defineEmits(['login-success', 'show-register'])
+const emit = defineEmits(['register-success', 'show-login'])
 
+const fullName = ref('')
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const errorMsg = ref('')
 const isLoading = ref(false)
 
-// Validation
-const emailValid = computed(() => {
-  if (!email.value) return false
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)
-})
-
+const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value))
 const passwordValid = computed(() => password.value.length >= 6)
+const confirmValid = computed(() => password.value === confirmPassword.value)
 
-const canSubmit = computed(() => emailValid.value && passwordValid.value && !isLoading.value)
+const canSubmit = computed(() =>
+  fullName.value.trim().length > 0 &&
+  emailValid.value &&
+  passwordValid.value &&
+  confirmValid.value &&
+  !isLoading.value
+)
 
-async function handleLogin() {
+async function handleRegister() {
   if (!canSubmit.value) return
 
   errorMsg.value = ''
   isLoading.value = true
 
   try {
-    const data = await loginUser(email.value.trim(), password.value)
-
-    emit('login-success', {
-      accessToken: data.accessToken,
-      user: data.user
-    })
+    const data = await registerUser(fullName.value.trim(), email.value.trim(), password.value)
+    emit('register-success', { accessToken: data.accessToken, user: data.user })
   } catch (err) {
-    console.error('Login error:', err)
-    errorMsg.value = err.message || 'Server error – please try again later'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-async function handleGuestLogin() {
-  if (isLoading.value) return
-
-  errorMsg.value = ''
-  isLoading.value = true
-
-  try {
-    const data = await loginGuest()
-
-    emit('login-success', {
-      accessToken: data.accessToken,
-      user: data.user
-    })
-  } catch (err) {
-    console.error('Guest login error:', err)
     errorMsg.value = err.message || 'Server error – please try again later'
   } finally {
     isLoading.value = false
@@ -287,19 +281,8 @@ async function handleGuestLogin() {
   cursor: not-allowed;
 }
 
-.action-btn + .action-btn {
-  margin-top: 12px;
-}
-
-.login-note {
-  margin-top: 16px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--accent-light);
-  color: var(--accent-hover);
-  font-size: 0.9rem;
-  line-height: 1.5;
-  border: 1px solid var(--accent-medium);
+.action-btn {
+  width: 100%;
 }
 
 .register-link {

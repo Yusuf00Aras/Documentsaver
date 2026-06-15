@@ -47,6 +47,18 @@ export async function loginUser(email, password) {
   return data
 }
 
+export async function registerUser(fullName, email, password) {
+  const res = await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ full_name: fullName, email, password })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Registration failed')
+  return data
+}
+
 export async function loginGuest(name = null) {
   const payload = typeof name === 'string' && name.trim()
     ? { name: name.trim() }
