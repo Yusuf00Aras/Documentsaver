@@ -1,5 +1,4 @@
 import 'dotenv/config';
-
 import express from 'express'
 import cors from 'cors'
 import jwt from 'jsonwebtoken';
@@ -18,10 +17,12 @@ import {
   getUserDocuments, 
   getDocumentPath, 
   deleteDocumentRecord,
-  getCategories,          
-  updateDocumentCategory  
+  getCategories,
+  updateDocumentCategory,
+  renameDocument
 } from '../modules/documents/document_processing.js' 
 import { storeDocumentWithEmbeddings } from '../modules/embeddings/proccess_embedding_pdf.js'
+
 
 const app = express()
 const PORT = process.env.PORT || 80
@@ -415,6 +416,20 @@ app.get('/api/categories',authenticateToken, async (req, res) => {
     res.json(await getCategories());
   } catch (err) {
     res.status(500).json({ error: 'Categories could not be loaded.' });
+  }
+});
+
+// Rename file
+app.patch('/api/files/:id/rename', authenticateToken, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Name cannot be empty' });
+    }
+    await renameDocument(req.params.id, req.user.user_id, name.trim());
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Rename failed' });
   }
 });
 
