@@ -21,7 +21,8 @@
 
       <div v-for="(m, i) in messages" :key="i" :class="['msg', m.role]" :aria-label="`${m.role === 'user' ? 'Your question' : 'Answer'}: ${m.content}`">
         <div class="bubble" role="article">
-          <span>{{ m.content }}</span>
+          <span v-if="m.role === 'user'">{{ m.content }}</span>
+          <span v-else class="markdown-body" v-html="renderMarkdown(m.content)"></span>
         </div>
       </div>
       
@@ -72,6 +73,11 @@
 <script setup>
 import { ref, watch, nextTick, computed } from 'vue'
 import Buttons from './buttons.vue'
+import { marked } from 'marked'
+
+function renderMarkdown(text) {
+  return marked.parse(text ?? '')
+}
 
 const props = defineProps({
   messages: Array,
@@ -254,6 +260,44 @@ function onFileSelected(event) {
   border: 1px solid var(--border);
   border-bottom-left-radius: 5px;
   color: var(--text-primary);
+}
+
+.markdown-body :deep(p) { margin: 0 0 0.5em; }
+.markdown-body :deep(p:last-child) { margin-bottom: 0; }
+.markdown-body :deep(strong) { font-weight: 700; }
+.markdown-body :deep(em) { font-style: italic; }
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3) { font-weight: 700; margin: 0.6em 0 0.3em; line-height: 1.3; }
+.markdown-body :deep(h1) { font-size: 1.2em; }
+.markdown-body :deep(h2) { font-size: 1.1em; }
+.markdown-body :deep(h3) { font-size: 1em; }
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) { padding-left: 1.4em; margin: 0.4em 0; }
+.markdown-body :deep(li) { margin-bottom: 0.2em; }
+.markdown-body :deep(code) {
+  font-family: monospace;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.88em;
+}
+.markdown-body :deep(pre) {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.markdown-body :deep(pre code) { background: none; border: none; padding: 0; }
+.markdown-body :deep(hr) { border: none; border-top: 1px solid var(--border); margin: 0.6em 0; }
+.markdown-body :deep(blockquote) {
+  border-left: 3px solid var(--accent);
+  margin: 0.4em 0;
+  padding-left: 0.8em;
+  color: var(--text-muted);
 }
 
 .bubble.typing {
