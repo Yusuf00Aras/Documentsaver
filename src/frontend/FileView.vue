@@ -259,8 +259,8 @@ const sortLabel = computed(() => {
   switch (sortMode.value) {
     case 'name-asc': return '🔤 Name A→Z'
     case 'name-desc': return '🔤 Name Z→A'
-    case 'date-asc': return '📅 Oldest first'
-    case 'date-desc': return '📅 Newest first'
+    case 'date-asc': return '📅 Newest first'
+    case 'date-desc': return '📅 Oldest first'
     default: return 'Sort'
   }
 })
